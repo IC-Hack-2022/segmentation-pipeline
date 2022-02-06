@@ -1,5 +1,8 @@
+from email.mime import image
 import json
+import requests
 import math as m
+import pprint
 
 with open('data/bounding_boxes.json', 'r') as f:
     country_bounding_boxes = json.load(f)
@@ -39,18 +42,20 @@ def bounding_box_size(lat_range, long_range):
 
     return height, width
 
-def distance_across_image(zoom, image_size):
-    metres_per_pixel = 156543.03392 / (zoom ** 2)
+def distance_across_image(zoom, lat, image_size):
+    metres_per_pixel = 156543.03392 * m.cos(lat * m.pi / 180) / (2 ** zoom)
     return metres_per_pixel * image_size
 
-def generate_coords(lat, cols, image_size):
+def generate_coords(lat, longs, cols):
     row_coords = list()
 
     for i in range(cols):
-        long = (0.5 + i) * image_size
-        row_coords.append((lat, long))
+        long = (0.5 + i) * (longs[1] - longs[0]) / cols + longs[0]
+        row_coords.append((round(lat, 2), round(long, 2)))
+    
+    return row_coords
 
-def get_country_images(country_name, zoom, image_size):
+def get_image_coords(country_name, zoom, image_size):
     if country_name not in country_bounding_boxes:
         raise ValueError("Country doesn't exist")
 
@@ -59,10 +64,10 @@ def get_country_images(country_name, zoom, image_size):
     lats = country_coords["lat"]
     longs = country_coords["long"]
 
-    country_height, country_width = bounding_box_size(lats, longs)
-    image_distance = distance_across_image(zoom, image_size)
+    mean_lat = sum(lats) / 2
 
-    print(country_height, country_width, image_distance)
+    country_height, country_width = bounding_box_size(lats, longs)
+    image_distance = distance_across_image(zoom, mean_lat, image_size)
 
     rows = m.ceil(country_height / image_distance)
     cols = m.ceil(country_width / image_distance)
@@ -70,11 +75,47 @@ def get_country_images(country_name, zoom, image_size):
     coords = list()
 
     for i in range(rows):
-        lat = (0.5 + i) * image_size
-        coords.append(generate_coords(lat, cols, image_size))
+        lat = (0.5 + i) * (lats[1] - lats[0]) / rows + lats[0]
+        coords.extend(generate_coords(lat, longs, cols))
     
+    print(len(coords))
+
     return coords
+
+def load_country_images(image_coords, country, directory):
+    for coord in image_coords:
+        lat, long = coord
+        res = requests.get(
+            "https://maps.googleapis.com/maps/api/staticmap",
+            params={
+                "center": f"{lat},{long}",
+                "size": "2448x2448",
+                "zoom": "11",
+                "maptype": "satellite",
+                "key": "AIzaSyBDn2wVZ3iyViyiTrlKvFvOCCgmffuKc7w",
+                "format": "jpg"
+            })
+
+        if not res.ok:
+            pprint.pprint(res.__dict__)
+            raise Exception("Request went wrong.")
+        
+        with open(f"{directory}/{country}_{lat}_{long}.jpg", 'wb') as f:
+            f.write(res.content)
 
 if __name__ == "__main__":
 
-    print(get_country_images("United Kingdom", 11, 2448))
+    import matplotlib.pyplot as plot
+
+    image_coords = get_image_coords("United Kingdom", 11, 2448)
+
+    x, y = zip(*image_coords)
+    print(x)
+    print(y)
+    plot.scatter(list(x), list(y))
+    plot.show()
+    #res = requests.get("https://maps.googleapis.com/maps/api/staticmap?zoom=11&size=2448x2448&maptype=satellite&key=AIzaSyBDn2wVZ3iyViyiTrlKvFvOCCgmffuKc7w&format=jpg&center=51.59,-0.118")
+
+    #print(res.ok)
+
+    #load_country_images(image_coords, "england", "images/")
