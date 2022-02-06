@@ -78,8 +78,6 @@ def get_image_coords(country_name, zoom, image_size):
         lat = (0.5 + i) * (lats[1] - lats[0]) / rows + lats[0]
         coords.extend(generate_coords(lat, longs, cols))
     
-    print(len(coords))
-
     return coords
 
 def load_country_images(image_coords, country, directory):
@@ -90,6 +88,7 @@ def load_country_images(image_coords, country, directory):
             params={
                 "center": f"{lat},{long}",
                 "size": "2448x2448",
+                "scale": "2",
                 "zoom": "11",
                 "maptype": "satellite",
                 "key": "AIzaSyBDn2wVZ3iyViyiTrlKvFvOCCgmffuKc7w",
@@ -105,17 +104,8 @@ def load_country_images(image_coords, country, directory):
 
 if __name__ == "__main__":
 
-    import matplotlib.pyplot as plot
+    image_coords = get_image_coords("United Kingdom", 10, 2448)
 
-    image_coords = get_image_coords("United Kingdom", 11, 2448)
+    print(f"Number of images to download: {len(image_coords)}.")
 
-    x, y = zip(*image_coords)
-    print(x)
-    print(y)
-    plot.scatter(list(x), list(y))
-    plot.show()
-    #res = requests.get("https://maps.googleapis.com/maps/api/staticmap?zoom=11&size=2448x2448&maptype=satellite&key=AIzaSyBDn2wVZ3iyViyiTrlKvFvOCCgmffuKc7w&format=jpg&center=51.59,-0.118")
-
-    #print(res.ok)
-
-    #load_country_images(image_coords, "england", "images/")
+    load_country_images(image_coords, "england", "images/")
