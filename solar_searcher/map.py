@@ -55,10 +55,11 @@ def generate_coords(lat, longs, cols):
     
     return row_coords
 
-def get_image_coords(country_name, zoom, image_size):
+def get_image_coords(country_name, zoom, scale=1):
     if country_name not in country_bounding_boxes:
         raise ValueError("Country doesn't exist")
 
+    image_size = 1280 if scale == 2 else 640
     country_coords = country_bounding_boxes[country_name]
 
     lats = country_coords["lat"]
@@ -80,15 +81,17 @@ def get_image_coords(country_name, zoom, image_size):
     
     return coords
 
-def load_country_images(image_coords, country, directory):
+def load_country_images(image_coords, country, directory, scale=1):
+    size = 1280 if scale == 2 else 640
+
     for coord in image_coords:
         lat, long = coord
         res = requests.get(
             "https://maps.googleapis.com/maps/api/staticmap",
             params={
                 "center": f"{lat},{long}",
-                "size": "2448x2448",
-                "scale": "2",
+                "size": f"{size}x{size}",
+                "scale": scale,
                 "zoom": "11",
                 "maptype": "satellite",
                 "key": "AIzaSyBDn2wVZ3iyViyiTrlKvFvOCCgmffuKc7w",
@@ -104,7 +107,7 @@ def load_country_images(image_coords, country, directory):
 
 if __name__ == "__main__":
 
-    image_coords = get_image_coords("United Kingdom", 10, 2448)
+    image_coords = get_image_coords("United Kingdom", 10)
 
     print(f"Number of images to download: {len(image_coords)}.")
 
